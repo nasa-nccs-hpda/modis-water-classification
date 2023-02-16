@@ -214,7 +214,8 @@ class TabularModisDataGenerator(object):
     # _generateDataPerDay
     # -------------------------------------------------------------------------
     def _generateDataPerDay(self, julianDay):
-        maskForDay = self._generateBadDataMask(day=julianDay)
+        maskForDay, _ = self._generateBadDataMask(day=julianDay, 
+                                                  files=self._files)
         waterMask = self._readWaterMask()
         waterConditional, landConditional = self._generateWaterLandConditional(
             waterMask,
@@ -245,11 +246,11 @@ class TabularModisDataGenerator(object):
     # -------------------------------------------------------------------------
     # _generateBadDataMask
     # -------------------------------------------------------------------------
-    def _generateBadDataMask(self, day):
+    def _generateBadDataMask(self, day, files):
         npArrayBands = {}
         for qaBand in self._QAS:
             npArrayBands[qaBand] = self._fileToArray(
-                self._files[qaBand])
+                files[qaBand])
 
         zeros_matrix = np.zeros((self.INPUT_OUTPUT_DIMENSION,
                                  self.INPUT_OUTPUT_DIMENSION))
@@ -258,8 +259,8 @@ class TabularModisDataGenerator(object):
         cond = self._generateConditionalArray(npArrayBands)
         ndMask = np.where(cond, ones_matrix, zeros_matrix).astype(np.uint16)
         cond = None
-        self._writeBadDataMask(mask=ndMask, day=day)
-        return ndMask
+        outPath = self._writeBadDataMask(mask=ndMask, day=day)
+        return ndMask, outPath
 
     # -------------------------------------------------------------------------
     # _writeBadDataMask
@@ -283,6 +284,7 @@ class TabularModisDataGenerator(object):
         outBand = None
         outDs = None
         mask = None
+        return outPath
 
     # -------------------------------------------------------------------------
     # _generateConditionalArray
