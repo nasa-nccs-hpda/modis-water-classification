@@ -1,0 +1,2 @@
+,number,value,datetime_start,datetime_complete,duration,params_max_depth,params_n_estimators,system_attrs_grid_id,system_attrs_search_space,state
+0,0,0.9801384716471933,2023-02-23 16:46:14.914951,2023-02-23 16:47:10.619569,0 days 00:00:55.704618,30,150,23,"OrderedDict([('max_depth', [5, 10, 30, 50, 80, 90, 100, 110]), ('n_estimators', [75, 100, 125, 150, 175, 200, 250, 300, 400, 500])])",COMPLETE
