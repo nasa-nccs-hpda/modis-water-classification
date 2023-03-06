@@ -260,15 +260,18 @@ class TabularModisDataGenerator(object):
         ndMask = np.where(cond, ones_matrix, zeros_matrix).astype(np.uint16)
         cond = None
         outPath = self._writeBadDataMask(mask=ndMask, day=day)
-        return ndMask, outPath
+        return ndMask,outPath
 
     # -------------------------------------------------------------------------
     # _writeBadDataMask
     # -------------------------------------------------------------------------
     def _writeBadDataMask(self, mask, day):
         post_str = self._getPostStr()
-        outName = 'MOD.A{}{:03}.{}.{}.QA.tif'.format(
-            self._year, day, self._tile, post_str)
+        #uncomment to include a timestamp for the QA mask
+        #outName = 'MOD.A{}{:03}.{}.{}.QA.tif'.format(
+        #    self._year, day, self._tile, post_str)
+        outName = 'MOD.A{}{:03}.{}.QA.tif'.format(
+            self._year, day, self._tile)
         outPath = os.path.join(self._outDir, outName)
         driver = gdal.GetDriverByName('GTiff')
         outDs = driver.Create(outPath,
