@@ -1,9 +1,9 @@
 import argparse
 import sys
 
-sys.path.append('.')
-from modis_water_random_forest.model.TabularModisDataGeneratorMasked import TabularModisDataGeneratorMasked
-from modis_water_random_forest.model.TabularModisDataGenerator import TabularModisDataGenerator
+# sys.path.append('.')
+from modis_water_training.model.TabularModisDataGeneratorMasked import TabularModisDataGeneratorMasked
+from modis_water_training.model.TabularModisDataGenerator import TabularModisDataGenerator
 
 # -----------------------------------------------------------------------------
 # main
@@ -48,8 +48,7 @@ def main(client=None):
                         'Required if using --special_mask')
 
     parser.add_argument('--noQA',
-                        required=True if '--special_mask' in sys.argv
-                        else False,
+                        required=False,
                         action='store_true',
                         help='Do not apply QA mask')
 
