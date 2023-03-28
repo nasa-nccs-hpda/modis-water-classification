@@ -1,11 +1,11 @@
-import csv
 import os
 import time
+import tqdm
 
 import numpy as np
 import pandas as pd
 
-from modis_water_random_forest.model.TabularModisDataGenerator import TabularModisDataGenerator
+from modis_water_training.model.TabularModisDataGenerator import TabularModisDataGenerator
 
 
 # -------------------------------------------------------------------------
@@ -65,7 +65,7 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
             files = self._readFiles(julianDay=day, sensorDir=self._tileDir)
             if files:
                 self._files = files
-                print()
+
                 parquetPaths.append(self._generateDataPerDay(day=day))
             else:
                 print('There are no files for that day.')
@@ -75,7 +75,9 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
             timeTotal.append(time_)
             timeTotalStr.append('{}: {}\n'.format(day, str(time_)))
         self._logTimes(timeTotal=timeTotal, timeTotalStr=timeTotalStr)
-        self._writeMainParquet(parquetPaths, numRows=100000)
+        parquetPaths = \
+            [parquetPath for parquetPath in parquetPaths if parquetPath]
+        self._writeMainParquet(parquetPaths)
 
     # -------------------------------------------------------------------------
     # _generateDataPerDay
@@ -84,6 +86,9 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
         maskForDay = self._generateBadDataMask(day=day)
         mask = self._readMask()
         maskConditional = self._generateConditional(mask, maskForDay)
+        if np.count_nonzero(maskConditional) < 1:
+            print(f'No good data in mask, skipping {day}')
+            return None
         bandDict = self._extractBandsPerConditional(maskConditional)
         bandDict = self._extractIndices(maskConditional, bandDict)
         bandDict = self._addIndices(bandDict)
@@ -112,9 +117,9 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
     # -------------------------------------------------------------------------
     def _extractBandsPerConditional(self, conditional):
         bandArrayDict = {}
-        for band in self._SRS:
+        print('Extracting bands')
+        for band in tqdm.tqdm(self._SRS):
             bandArray = self._fileToArray(self._files[band], type_=np.int16)
-            print(band)
             extract = np.extract(conditional, bandArray)
             bandArrayDict[band] = extract
             # Free up some memory.
@@ -125,21 +130,19 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
     # _generateConditional
     # -------------------------------------------------------------------------
     def _generateConditional(self, mask, badDataMask):
-        print('To-take total in mask:')
-        print(np.count_nonzero(mask == 0))
-        print('Not to toke total in mask:')
-        print(np.count_nonzero(mask == 1))
-        cat = (mask == 0)
+        print(f'Total in mask: {np.count_nonzero(mask == 1)}')
+        print(f'Total out of mask: {np.count_nonzero(mask == 0)}')
+        cat = (mask == 1)
         extract = np.extract(cat, badDataMask)
-        print('Bad data in shape: {}'.format(np.count_nonzero(extract == 1)))
+        print('Bad data in mask: {}'.format(np.count_nonzero(extract == 1)))
         print('Categorical testing')
         c1 = (~badDataMask & mask)
-        print('N out of mask: {}'.format(np.count_nonzero(c1 == 1)))
-        c2 = (~badDataMask & ~mask)
-        print('N in mask: {}'.format(np.count_nonzero(c2 == 65535)))
+        print('Good data in mask: {}'.format(np.count_nonzero(c1 == 1)))
+        c2 = (badDataMask & mask)
+        print('Bad data in mask: {}'.format(np.count_nonzero(c2 == 1)))
         badDataMask = np.zeros(badDataMask.shape, dtype=np.uint16) if \
             self._noQA else badDataMask
-        conditional = ((~badDataMask & ~mask) == 65535)
+        conditional = (c1 == 1)
         badDataMask = None
         return conditional
 
@@ -244,10 +247,9 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
         fields = ['water']
         fields.extend(self._SRSPLIDX)
         shape = matrix.shape
-        post_str = self._getPostStr()
         landWater = 'water' if self._water else 'land'
-        parquetPath = 'MOD.A{}{:03}.{}.{}-{}-{}.parquet.gzip'.format(
-            self._year, day, self._tile, post_str, shape[0], landWater)
+        parquetPath = 'MOD.A{}{:03}.{}.{}.{}.parquet.gzip'.format(
+            self._year, day, self._tile, shape[0], landWater)
         parquetPath = os.path.join(self._outDir, parquetPath)
         print('Writing matrix to parquet: {}\nRows: {}\n'.format(
             parquetPath, matrix.shape[0]))
@@ -264,7 +266,7 @@ class TabularModisDataGeneratorMasked(TabularModisDataGenerator):
     # -------------------------------------------------------------------------
     # _writeMainParquet
     # -------------------------------------------------------------------------
-    def _writeMainParquet(self, pathList, numRows=10000):
+    def _writeMainParquet(self, pathList):
         dfList = [pd.read_parquet(name) for name in pathList]
         dataframeConcat = pd.concat(dfList)
         dataframeConcat = TabularModisDataGenerator.filterNegativeRows(
