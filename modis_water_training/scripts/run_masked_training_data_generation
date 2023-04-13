@@ -1,0 +1,14 @@
+#!/bin/bash
+
+export PYTHONPATH=$PWD:$PWD/modis-water-classification
+
+python modis-water-classification/modis_water_training/view/TabularModisDataGeneratorCLV.py \
+    -d 167 170 \
+    -i /css/modis/Collection6.1/L2G/MOD09GA/2006 \
+    -o . \
+    --special_mask \
+    -sp h30v11_water_mask.tif \
+    --water \
+    -t 30 11 \
+    -y 2006 \
+    -n 1000000 \
