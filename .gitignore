@@ -1,3 +1,9 @@
+#tif files output by scripts
+modis_water_training/view/notebook/Burke_Analysis/modis_investigation_data/
+modis_water_training/view/notebook/Burke_Analysis/model_output_tif_files/
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
