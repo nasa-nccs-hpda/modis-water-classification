@@ -270,6 +270,8 @@ class TabularModisDataGenerator(object):
         #uncomment to include a timestamp for the QA mask
         #outName = 'MOD.A{}{:03}.{}.{}.QA.tif'.format(
         #    self._year, day, self._tile, post_str)
+        outName = 'MOD.A{}{:03}.{}.{}.QA.tif'.format(
+            self._year, day, self._tile, post_str)
         outPath = os.path.join(self._outDir, outName)
         driver = gdal.GetDriverByName('GTiff')
         outDs = driver.Create(outPath,
