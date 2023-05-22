@@ -1,0 +1,15 @@
+#!/bin/bash
+
+date 
+
+module load anaconda
+
+conda activate ilab_clone
+
+export LPDAAC=$(cat token)
+export TYPE_MOD="MOD09$4"
+#python MODIS_download.py -t $1 -a $LPDAAC -c 61 -o $2/$1/data -dp MCD64A1 -y $2 & wait
+
+#python MODIS_download.py -t $1 -a $LPDAAC -c 61 -o $2/$1/data -dp MOD09GA -y $2 & wait
+
+python MODIS_download_mu.py -l $3 -t $1 -a $LPDAAC -c 61 -o $2/$1/data -dp $TYPE_MOD -y $2 & wait

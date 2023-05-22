@@ -1,12 +1,12 @@
 import copy
-import csv
 import datetime
 import glob
-import numpy as np
 import os
-import pandas as pd
 import warnings
 import time
+
+import numpy as np
+import pandas as pd
 
 from osgeo import gdal
 from osgeo import gdalconst
@@ -184,7 +184,7 @@ class TabularModisDataGenerator(object):
                          ':MODIS_Grid_2D:sur_refl_b02_1']
 
                 files.update(self._readBands(gqFiles[0], bands))
-            except RuntimeError as e:
+            except RuntimeError:
                 print('Julian day: {}\nFiles: {}'.format(julianDay, files))
                 print('Could not find files for that day, skipping.')
 
@@ -214,7 +214,8 @@ class TabularModisDataGenerator(object):
     # _generateDataPerDay
     # -------------------------------------------------------------------------
     def _generateDataPerDay(self, julianDay):
-        maskForDay = self._generateBadDataMask(day=julianDay)
+        maskForDay, _ = self._generateBadDataMask(day=julianDay, 
+                                                  files=self._files)
         waterMask = self._readWaterMask()
         waterConditional, landConditional = self._generateWaterLandConditional(
             waterMask,
@@ -245,11 +246,11 @@ class TabularModisDataGenerator(object):
     # -------------------------------------------------------------------------
     # _generateBadDataMask
     # -------------------------------------------------------------------------
-    def _generateBadDataMask(self, day):
+    def _generateBadDataMask(self, day, files):
         npArrayBands = {}
         for qaBand in self._QAS:
             npArrayBands[qaBand] = self._fileToArray(
-                self._files[qaBand])
+                files[qaBand])
 
         zeros_matrix = np.zeros((self.INPUT_OUTPUT_DIMENSION,
                                  self.INPUT_OUTPUT_DIMENSION))
@@ -258,16 +259,15 @@ class TabularModisDataGenerator(object):
         cond = self._generateConditionalArray(npArrayBands)
         ndMask = np.where(cond, ones_matrix, zeros_matrix).astype(np.uint16)
         cond = None
-        self._writeBadDataMask(mask=ndMask, day=day)
-        return ndMask
+        outPath = self._writeBadDataMask(mask=ndMask, day=day)
+        return ndMask, outPath
 
     # -------------------------------------------------------------------------
     # _writeBadDataMask
     # -------------------------------------------------------------------------
     def _writeBadDataMask(self, mask, day):
-        post_str = self._getPostStr()
-        outName = 'MOD.A{}{:03}.{}.{}.QA.tif'.format(
-            self._year, day, self._tile, post_str)
+        outName = 'MOD.A{}{:03}.{}.QA.tif'.format(
+            self._year, day, self._tile)
         outPath = os.path.join(self._outDir, outName)
         driver = gdal.GetDriverByName('GTiff')
         outDs = driver.Create(outPath,
@@ -283,6 +283,7 @@ class TabularModisDataGenerator(object):
         outBand = None
         outDs = None
         mask = None
+        return outPath
 
     # -------------------------------------------------------------------------
     # _generateConditionalArray
@@ -312,19 +313,14 @@ class TabularModisDataGenerator(object):
     # _fileToArray
     # -------------------------------------------------------------------------
     def _fileToArray(self, name, type_=np.uint16):
-        vrt_path = os.path.join(self._outDir, 'tmp.vrt')
-        vrt_opts = gdal.BuildVRTOptions(
-            xRes=231.656358, yRes=231.656358, separate=True)
-        band_vrt = gdal.BuildVRT(vrt_path, [name], options=vrt_opts)
+        ds = gdal.Open(name)
         if self._STATE in name:
-            self._outTransform = band_vrt.GetGeoTransform()
-            self._outProjection = band_vrt.GetProjection()
-        fileBand = band_vrt.GetRasterBand(1)
-        bandNdarray = np.array(fileBand.ReadAsArray()).astype(type_)
-        band_vrt = None
-        fileBand = None
-        if os.path.exists(vrt_path):
-            os.remove(vrt_path)
+            self._outTransform = ds.GetGeoTransform()
+            self._outProjection = ds.GetProjection()
+        bandNdarray = ds.ReadAsArray(0, 0, None, None, None,
+                                     self.INPUT_OUTPUT_DIMENSION,
+                                     self.INPUT_OUTPUT_DIMENSION)
+        bandNdarray = bandNdarray.astype(type_)
         return bandNdarray
 
     # -------------------------------------------------------------------------
