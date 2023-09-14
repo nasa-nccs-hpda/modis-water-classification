@@ -7,7 +7,7 @@ modis_water_training/view/notebook/Burke_Analysis/*pkl
 modis_water_training/__pycache__/
 modis_water_training/model/__pycache__/
 modis_water_training/view/notebook/Burke_Analysis/__pycache__/
-
+modis_water_training/view/notebook/Burke_Analysis/rfa_models/
 
 # C extensions
 *.so
