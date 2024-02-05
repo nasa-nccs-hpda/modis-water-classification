@@ -178,14 +178,17 @@ def merge_water_masks(layers: List[str]) -> xr.Dataset:
 # ----------------------------------------------------------------------------
 def plotTS(m, marker, datarray, y, x, lat, lon):
     image = BytesIO()
-    datarray.sel(x=x, y=y, method="nearest").plot()
+    xticks = list(datarray.time.values)
+    print(xticks)
+    datarray.sel(x=x, y=y, method="nearest").plot(figsize=(10,5), xticks=xticks)
+    plt.grid()
     plt.savefig(image, format="png", bbox_inches="tight")
     data = "data:image/png;base64," + (encodebytes(image.getvalue())).decode(
         "ascii"
     )
     plt.close()
     message = widgets.HTML()
-    image_html = '<div><img height="350" width="450" src="{0}"/>'.format(data)
+    image_html = '<div><img height="350" width="550" src="{0}"/>'.format(data)
     legend_text = f'<b>Legend:</b> 1 = water, 0 = not water</b>'
     location_text = f'<br><b>Location:</b><br>lat/lon: ({lat}, {lon})' + \
         f'<br>modis sinu x/y: ({y},{x})'
