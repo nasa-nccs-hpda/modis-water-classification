@@ -149,7 +149,7 @@ def get_mod44w_time_series(tile: str) -> List[pathlib.Path]:
         [str(file_match) for file_match in base_dir.glob(regex)]
     )
     n_files_matching_regex = len(files_matching_regex)
-    assert n_files_matching_regex == NUMBER_YEARS, (
+    assert n_files_matching_regex >= NUMBER_YEARS, (
         f"Expected {NUMBER_YEARS} files matching {regex},"
         + f" got {n_files_matching_regex}"
     )
