@@ -2,4 +2,5 @@
 module load anaconda
 conda activate ilab-pytorch
 
-python XY_Training.py 
+python Training_2billion_pt_MW_RFA.py
+

@@ -53,12 +53,12 @@ from cuml.ensemble import RandomForestClassifier as cuRFC
 # In[2]:
 
 
-GPU = True
+GPU = False
 
 
 # In[3]:
 
-
+outlier_threshold = 10000
 MODEL = 'rf'
 TEST_RATIO = 0.2
 RANDOM_STATE = 42
@@ -124,7 +124,7 @@ v_names = ['sur_refl_b01_1','sur_refl_b02_1','sur_refl_b03_1',
 
 
 def load_cpu_data(fpath, colsToDrop, yCol='water', testSize=0.2, randomState=42, 
-            dataType=np.float32, cpu=True, splitXY=False, trainTestSplit=False,
+            dataType=np.int16, cpu=True, splitXY=False, trainTestSplit=False,
             applyLog=False, imbalance=False, frac=0.1, land=False, multi=False, 
             multisample=1000000):
     """
@@ -252,7 +252,18 @@ if GPU is False:
     X, X_test, y, y_test = load_cpu_data(**load_data_params)
 else:
     X, X_test, y, y_test = load_gpu_data(**load_data_params)
-    X_cpu,X_cpu_test,y_cpu,y_cpu_test = load_cpu_data(**load_data_params) 
+    X_cpu,y_cpu,y_cpu_test,X_cpu_test = load_cpu_data(**load_data_params)
+    
+    ###############
+    # Will need to change this part when GPU is true, so 
+    #the final skRF works with X_cpu NOT X
+    X_cpu_no_outlier = X_cpu.copy()
+    y_cpu_no_outlier = y_cpu.copy()
+    cpu_outlier_inds = X_cpu[X_cpu['sur_refl_b01_1'] > outlier_threshold].index
+    X_cpu_no_outlier.drop(cpu_outlier_inds, inplace=True)
+    y_cpu_no_outlier.drop(cpu_outlier_inds, inplace=True)
+    ###############
+
 print(f'data shape: {X.shape}, {y.shape}')
 elapsed_time = time.time() - start_time
 print(f'Load in Data Execution time: {time.strftime("%H:%M:%S", time.gmtime(elapsed_time))}\n')
@@ -262,7 +273,14 @@ print(f'Load in Data Execution time: {time.strftime("%H:%M:%S", time.gmtime(elap
 
 
 print(X)
+X_no_outlier = X.copy()
+y_no_outlier = y.copy()
+outlier_inds = X[X['sur_refl_b01_1'] > outlier_threshold].index
+X_no_outlier.drop(outlier_inds, inplace=True)
+y_no_outlier.drop(outlier_inds, inplace=True)
 
+
+print(f' Removing {len(X) - len(X_no_outlier)} outliers')
 
 _ = [print(column) for column in X.columns]
 
@@ -301,9 +319,9 @@ def cpu_rf_objective(trial):
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
     cv_scores = np.empty(5)
-    for idx, (train_idx, val_idx) in enumerate(cv.split(X,y)):
-        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-        y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+    for idx, (train_idx, val_idx) in enumerate(cv.split(X_no_outlier,y_no_outlier)):
+        X_train, X_val = X_no_outlier.iloc[train_idx], X_no_outlier.iloc[val_idx]
+        y_train, y_val = y_no_outlier.iloc[train_idx],y_no_outlier.iloc[val_idx]
 
         model = skRF(**param)
         model.fit(X_train, y_train)
@@ -352,9 +370,9 @@ def gpu_rf_objective(trial):
     #######################
    
     cv_scores = np.empty(5)
-    for idx, (train_idx, val_idx) in enumerate(cv.split(X.to_pandas(),y.to_pandas())):
-        X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
-        y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+    for idx, (train_idx, val_idx) in enumerate(cv.split(X_no_outlier.to_pandas(),y_no_outlier.to_pandas())):
+        X_train, X_val = X_no_outlier.iloc[train_idx], X_no_outlier.iloc[val_idx]
+        y_train, y_val = y_no_outlier.iloc[train_idx], y_no_outlier.iloc[val_idx]
         
         model = cuRFC(**param)
         model.fit(X_train, y_train)
@@ -422,13 +440,13 @@ tuned_classifier = skRF(**hyperparameters)
 # In[ ]:
 
 start_time = time.time()
-tuned_classifier.fit(X_cpu,y_cpu)
+tuned_classifier.fit(X,y)
 elapsed_time = time.time() - start_time
 print(f'Full Train time: {time.strftime("%H:%M:%S", time.gmtime(elapsed_time))}\n')
 
 # # save the model to disk
 import pickle
-filename = f'rfa_models/MODIS_RFA_NoCluster_v201_MaxScore{score_print}_sfcref127ndvi.pkl'
+filename = f'rfa_models/MODIS_RFA_v201_Total_no-outlier-pts_MaxScore{score_print}.pkl'
 print(filename)
 pickle.dump(tuned_classifier, open(filename, 'wb'))
 
