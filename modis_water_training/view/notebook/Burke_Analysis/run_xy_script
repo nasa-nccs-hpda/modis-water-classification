@@ -2,5 +2,5 @@
 module load anaconda
 conda activate ilab-pytorch
 
-python Training_2billion_pt_MW_RFA.py
+python Plotting_MW_Data.py 
 
